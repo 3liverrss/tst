@@ -591,6 +591,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cameraPivot: {fileID: 609640817}
   turnSpeed: 5
+  arriveThreshold: 1
   arrowLeft: {fileID: 360967956}
   arrowRight: {fileID: 1575740384}
   arrowBack: {fileID: 1475182573}

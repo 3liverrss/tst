@@ -5,6 +5,7 @@ public class PlayerRoomHoverTurn : MonoBehaviour
 {
     public Transform cameraPivot;
     public float turnSpeed = 5f;
+    public float arriveThreshold = 1f;
 
     public Image arrowLeft;
     public Image arrowRight;
@@ -13,30 +14,76 @@ public class PlayerRoomHoverTurn : MonoBehaviour
     private int currentAngle = 0;
     private int targetAngle = 0;
 
-    void Update()
-    {
-        UpdateTargetAngle();
-        cameraPivot.localRotation = Quaternion.Lerp(cameraPivot.localRotation,
-            Quaternion.Euler(0, targetAngle, 0),
-            Time.deltaTime * turnSpeed);
+    private int pendingAngle = 0;
+    private bool hasProcessedThisHover = false;
 
-        UpdateArrowHighlights();
+    void Start()
+    {
+        targetAngle = currentAngle;
+        UpdateArrows();
     }
 
-    void UpdateTargetAngle()
+    void Update()
+    {
+        HandleHoverInput();
+        RotateTowardsTarget();
+        UpdateArrowHighlights();
+        CheckArrivalAndUpdateState();
+    }
+
+    void HandleHoverInput()
     {
         Vector3 mousePos = Input.mousePosition;
 
-        if (arrowLeft.gameObject.activeSelf && mousePos.x < Screen.width * 0.1f)
-            targetAngle = -90;
-        else if (arrowRight.gameObject.activeSelf && mousePos.x > Screen.width * 0.9f)
-            targetAngle = 90;
-        else if (arrowBack.gameObject.activeSelf && mousePos.y < Screen.height * 0.1f)
-            targetAngle = 180;
-        else
-            targetAngle = 0;
+        bool hoveredLeft = arrowLeft.gameObject.activeSelf && mousePos.x < Screen.width * 0.1f;
+        bool hoveredRight = arrowRight.gameObject.activeSelf && mousePos.x > Screen.width * 0.9f;
+        bool hoveredBack = arrowBack.gameObject.activeSelf && mousePos.y < Screen.height * 0.1f;
 
-        currentAngle = targetAngle;
+        int desired = currentAngle;
+
+        if (hoveredLeft) desired = -90;
+        else if (hoveredRight) desired = 90;
+        else if (hoveredBack) desired = 180;
+        else
+        {
+            hasProcessedThisHover = false;
+            return;
+        }
+
+        if (hasProcessedThisHover) return;
+
+        float diff = Mathf.Abs(Mathf.DeltaAngle(currentAngle, desired));
+        if (diff == 180f)
+        {
+            targetAngle = 0;
+            pendingAngle = 0;
+        }
+        else
+        {
+            targetAngle = desired;
+        }
+
+        hasProcessedThisHover = true;
+    }
+
+    void RotateTowardsTarget()
+    {
+        Quaternion tgt = Quaternion.Euler(0, targetAngle, 0);
+        cameraPivot.localRotation = Quaternion.Lerp(cameraPivot.localRotation, tgt, Time.deltaTime * turnSpeed);
+    }
+
+    void CheckArrivalAndUpdateState()
+    {
+        float angleDiff = Quaternion.Angle(cameraPivot.localRotation, Quaternion.Euler(0, targetAngle, 0));
+        if (angleDiff <= arriveThreshold)
+        {
+            cameraPivot.localRotation = Quaternion.Euler(0, targetAngle, 0);
+            if (currentAngle != targetAngle)
+            {
+                currentAngle = targetAngle;
+                UpdateArrows();
+            }
+        }
     }
 
     void UpdateArrowHighlights()
