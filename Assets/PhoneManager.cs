@@ -1,4 +1,3 @@
-
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,6 +7,10 @@ public class PhoneManager : MonoBehaviour
     public Slider batteryBar;
     public float batteryDrainRate = 0.01f;
     public float chargeRate = 0.05f;
+    public Light flashLight;
+    public float flashIntensity = 12f;
+    public float flashDuration = 0.08f;
+    public KeyCode flashKey = KeyCode.F;
     public KeyCode toggleKey = KeyCode.Tab;
     public Transform cameraPivot;
     public Transform charger;
@@ -21,6 +24,8 @@ public class PhoneManager : MonoBehaviour
     {
         UpdateBatteryUI();
         phoneUI.SetActive(false);
+        if (flashLight != null)
+            flashLight.intensity = 0f;
     }
 
     void Update()
@@ -28,6 +33,7 @@ public class PhoneManager : MonoBehaviour
         HandleToggle();
         CheckIfLookingAtCharger();
         HandleBattery();
+        HandleFlash();
     }
 
     void HandleToggle()
@@ -42,10 +48,8 @@ public class PhoneManager : MonoBehaviour
     void CheckIfLookingAtCharger()
     {
         if (cameraPivot == null || charger == null) return;
-
         Vector3 dirToCharger = (charger.position - cameraPivot.position).normalized;
         float angle = Vector3.Angle(cameraPivot.forward, dirToCharger);
-
         isCharging = angle < lookThreshold;
     }
 
@@ -60,15 +64,32 @@ public class PhoneManager : MonoBehaviour
         {
             battery += chargeRate * Time.deltaTime;
         }
-
         battery = Mathf.Clamp01(battery);
         UpdateBatteryUI();
-
         if (battery <= 0 && phoneActive)
         {
             phoneActive = false;
             phoneUI.SetActive(false);
         }
+    }
+
+    void HandleFlash()
+    {
+        if (phoneActive && Input.GetKeyDown(flashKey) && flashLight != null && battery > 0)
+        {
+            flashLight.intensity = flashIntensity;
+            Invoke(nameof(ResetFlash), flashDuration);
+            battery -= 0.02f;
+            battery = Mathf.Clamp01(battery);
+            UpdateBatteryUI();
+        }
+    }
+
+
+    void ResetFlash()
+    {
+        if (flashLight != null)
+            flashLight.intensity = 0f;
     }
 
     void UpdateBatteryUI()
