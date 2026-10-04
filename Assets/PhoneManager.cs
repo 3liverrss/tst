@@ -19,17 +19,32 @@ public class PhoneManager : MonoBehaviour
     private float battery = 1f;
     private bool phoneActive = false;
     private bool isCharging = false;
+    private TemperatureManager temperatureManager;
 
     void Start()
     {
+        temperatureManager = FindFirstObjectByType<TemperatureManager>();
+
         UpdateBatteryUI();
         phoneUI.SetActive(false);
+
         if (flashLight != null)
             flashLight.intensity = 0f;
     }
 
     void Update()
     {
+        if (temperatureManager != null && temperatureManager.isFrozen)
+        {
+            phoneActive = false;
+            phoneUI.SetActive(false);
+
+            if (flashLight != null)
+                flashLight.intensity = 0f;
+
+            return;
+        }
+
         HandleToggle();
         CheckIfLookingAtCharger();
         HandleBattery();
@@ -48,6 +63,7 @@ public class PhoneManager : MonoBehaviour
     void CheckIfLookingAtCharger()
     {
         if (cameraPivot == null || charger == null) return;
+
         Vector3 dirToCharger = (charger.position - cameraPivot.position).normalized;
         float angle = Vector3.Angle(cameraPivot.forward, dirToCharger);
         isCharging = angle < lookThreshold;
@@ -64,8 +80,10 @@ public class PhoneManager : MonoBehaviour
         {
             battery += chargeRate * Time.deltaTime;
         }
+
         battery = Mathf.Clamp01(battery);
         UpdateBatteryUI();
+
         if (battery <= 0 && phoneActive)
         {
             phoneActive = false;
@@ -79,12 +97,12 @@ public class PhoneManager : MonoBehaviour
         {
             flashLight.intensity = flashIntensity;
             Invoke(nameof(ResetFlash), flashDuration);
+
             battery -= 0.02f;
             battery = Mathf.Clamp01(battery);
             UpdateBatteryUI();
         }
     }
-
 
     void ResetFlash()
     {

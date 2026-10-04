@@ -11,6 +11,8 @@ public class PlayerRoomHoverTurn : MonoBehaviour
     public Image arrowRight;
     public Image arrowBack;
 
+    private TemperatureManager temperatureManager;
+
     private int currentAngle = 0;
     private int targetAngle = 0;
 
@@ -19,12 +21,22 @@ public class PlayerRoomHoverTurn : MonoBehaviour
 
     void Start()
     {
+        temperatureManager = FindFirstObjectByType<TemperatureManager>();
+
         targetAngle = currentAngle;
         UpdateArrows();
     }
 
     void Update()
     {
+        if (temperatureManager != null && temperatureManager.isFrozen)
+        {
+            arrowLeft.gameObject.SetActive(false);
+            arrowRight.gameObject.SetActive(false);
+            arrowBack.gameObject.SetActive(false);
+            return;
+        }
+
         HandleHoverInput();
         RotateTowardsTarget();
         UpdateArrowHighlights();
@@ -41,18 +53,23 @@ public class PlayerRoomHoverTurn : MonoBehaviour
 
         int desired = currentAngle;
 
-        if (hoveredLeft) desired = -90;
-        else if (hoveredRight) desired = 90;
-        else if (hoveredBack) desired = 180;
+        if (hoveredLeft)
+            desired = -90;
+        else if (hoveredRight)
+            desired = 90;
+        else if (hoveredBack)
+            desired = 180;
         else
         {
             hasProcessedThisHover = false;
             return;
         }
 
-        if (hasProcessedThisHover) return;
+        if (hasProcessedThisHover)
+            return;
 
         float diff = Mathf.Abs(Mathf.DeltaAngle(currentAngle, desired));
+
         if (diff == 180f)
         {
             targetAngle = 0;
@@ -69,15 +86,29 @@ public class PlayerRoomHoverTurn : MonoBehaviour
     void RotateTowardsTarget()
     {
         Quaternion tgt = Quaternion.Euler(0, targetAngle, 0);
-        cameraPivot.localRotation = Quaternion.Lerp(cameraPivot.localRotation, tgt, Time.deltaTime * turnSpeed);
+
+        cameraPivot.localRotation = Quaternion.Lerp(
+            cameraPivot.localRotation,
+            tgt,
+            Time.deltaTime * turnSpeed
+        );
     }
 
     void CheckArrivalAndUpdateState()
     {
-        float angleDiff = Quaternion.Angle(cameraPivot.localRotation, Quaternion.Euler(0, targetAngle, 0));
+        float angleDiff = Quaternion.Angle(
+            cameraPivot.localRotation,
+            Quaternion.Euler(0, targetAngle, 0)
+        );
+
         if (angleDiff <= arriveThreshold)
         {
-            cameraPivot.localRotation = Quaternion.Euler(0, targetAngle, 0);
+            cameraPivot.localRotation = Quaternion.Euler(
+                0,
+                targetAngle,
+                0
+            );
+
             if (currentAngle != targetAngle)
             {
                 currentAngle = targetAngle;
@@ -90,9 +121,20 @@ public class PlayerRoomHoverTurn : MonoBehaviour
     {
         Vector3 mousePos = Input.mousePosition;
 
-        arrowLeft.color = (arrowLeft.gameObject.activeSelf && mousePos.x < Screen.width * 0.1f) ? Color.white : new Color(1, 1, 1, 0.3f);
-        arrowRight.color = (arrowRight.gameObject.activeSelf && mousePos.x > Screen.width * 0.9f) ? Color.white : new Color(1, 1, 1, 0.3f);
-        arrowBack.color = (arrowBack.gameObject.activeSelf && mousePos.y < Screen.height * 0.1f) ? Color.white : new Color(1, 1, 1, 0.3f);
+        arrowLeft.color =
+            (arrowLeft.gameObject.activeSelf && mousePos.x < Screen.width * 0.1f)
+            ? Color.white
+            : new Color(1, 1, 1, 0.3f);
+
+        arrowRight.color =
+            (arrowRight.gameObject.activeSelf && mousePos.x > Screen.width * 0.9f)
+            ? Color.white
+            : new Color(1, 1, 1, 0.3f);
+
+        arrowBack.color =
+            (arrowBack.gameObject.activeSelf && mousePos.y < Screen.height * 0.1f)
+            ? Color.white
+            : new Color(1, 1, 1, 0.3f);
     }
 
     public void UpdateArrows()
