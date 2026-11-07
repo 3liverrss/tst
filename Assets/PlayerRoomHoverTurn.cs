@@ -13,17 +13,14 @@ public class PlayerRoomHoverTurn : MonoBehaviour
 
     private TemperatureManager temperatureManager;
 
-    private int currentAngle = 0;
     private int targetAngle = 0;
-
-    private int pendingAngle = 0;
     private bool hasProcessedThisHover = false;
 
     void Start()
     {
         temperatureManager = FindFirstObjectByType<TemperatureManager>();
 
-        targetAngle = currentAngle;
+        targetAngle = 0;
         UpdateArrows();
     }
 
@@ -40,7 +37,7 @@ public class PlayerRoomHoverTurn : MonoBehaviour
         HandleHoverInput();
         RotateTowardsTarget();
         UpdateArrowHighlights();
-        CheckArrivalAndUpdateState();
+        SnapIfArrived();
     }
 
     void HandleHoverInput()
@@ -51,14 +48,16 @@ public class PlayerRoomHoverTurn : MonoBehaviour
         bool hoveredRight = arrowRight.gameObject.activeSelf && mousePos.x > Screen.width * 0.9f;
         bool hoveredBack = arrowBack.gameObject.activeSelf && mousePos.y < Screen.height * 0.1f;
 
-        int desired = currentAngle;
+        bool facingBehind = targetAngle == 180;
+
+        int desired = targetAngle;
 
         if (hoveredLeft)
-            desired = -90;
+            desired = facingBehind ? 90 : -90;
         else if (hoveredRight)
-            desired = 90;
+            desired = facingBehind ? -90 : 90;
         else if (hoveredBack)
-            desired = 180;
+            desired = facingBehind ? 0 : 180;
         else
         {
             hasProcessedThisHover = false;
@@ -68,16 +67,17 @@ public class PlayerRoomHoverTurn : MonoBehaviour
         if (hasProcessedThisHover)
             return;
 
-        float diff = Mathf.Abs(Mathf.DeltaAngle(currentAngle, desired));
+        float diff = Mathf.Abs(Mathf.DeltaAngle(targetAngle, desired));
 
-        if (diff == 180f)
+        int newTarget = desired;
+
+        if (diff > 179f && Mathf.Abs(targetAngle) == 90)
+            newTarget = 0;
+
+        if (newTarget != targetAngle)
         {
-            targetAngle = 0;
-            pendingAngle = 0;
-        }
-        else
-        {
-            targetAngle = desired;
+            targetAngle = newTarget;
+            UpdateArrows();
         }
 
         hasProcessedThisHover = true;
@@ -94,27 +94,12 @@ public class PlayerRoomHoverTurn : MonoBehaviour
         );
     }
 
-    void CheckArrivalAndUpdateState()
+    void SnapIfArrived()
     {
-        float angleDiff = Quaternion.Angle(
-            cameraPivot.localRotation,
-            Quaternion.Euler(0, targetAngle, 0)
-        );
+        Quaternion tgt = Quaternion.Euler(0, targetAngle, 0);
 
-        if (angleDiff <= arriveThreshold)
-        {
-            cameraPivot.localRotation = Quaternion.Euler(
-                0,
-                targetAngle,
-                0
-            );
-
-            if (currentAngle != targetAngle)
-            {
-                currentAngle = targetAngle;
-                UpdateArrows();
-            }
-        }
+        if (Quaternion.Angle(cameraPivot.localRotation, tgt) <= arriveThreshold)
+            cameraPivot.localRotation = tgt;
     }
 
     void UpdateArrowHighlights()
@@ -139,8 +124,8 @@ public class PlayerRoomHoverTurn : MonoBehaviour
 
     public void UpdateArrows()
     {
-        arrowLeft.gameObject.SetActive(currentAngle != -90);
-        arrowRight.gameObject.SetActive(currentAngle != 90);
-        arrowBack.gameObject.SetActive(currentAngle != 180 && currentAngle != -180);
+        arrowLeft.gameObject.SetActive(targetAngle != -90);
+        arrowRight.gameObject.SetActive(targetAngle != 90);
+        arrowBack.gameObject.SetActive(true);
     }
 }

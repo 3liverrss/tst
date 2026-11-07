@@ -53,13 +53,7 @@ public class TemperatureManager : MonoBehaviour
 
         temperature = Mathf.Clamp01(temperature);
 
-        float coldProgress = 0f;
-
-        if (timePassed > delayBeforeCold)
-        {
-            float coldTime = timePassed - delayBeforeCold;
-            coldProgress = Mathf.Clamp01(coldTime / freezeTime);
-        }
+        float coldProgress = 1f - temperature;
 
         Color coldColor = coldOverlay.color;
         coldColor.a = coldProgress;
@@ -73,12 +67,7 @@ public class TemperatureManager : MonoBehaviour
             Time.deltaTime * blanketFadeSpeed
         );
 
-        blanketOverlay.color = new Color(
-            0f,
-            0f,
-            0f,
-            blanketAlpha
-        );
+        blanketOverlay.color = new Color(0f, 0f, 0f, blanketAlpha);
 
         if (temperature <= 0f)
             FreezePlayer();
@@ -92,11 +81,6 @@ public class TemperatureManager : MonoBehaviour
         coldColor.a = 1f;
         coldOverlay.color = coldColor;
 
-        blanketOverlay.color = new Color(
-            0f,
-            0f,
-            0f,
-            0f
-        );
+        blanketOverlay.color = new Color(0f, 0f, 0f, 0f);
     }
 }

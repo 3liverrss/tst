@@ -3,20 +3,38 @@ using UnityEngine.UI;
 
 public class PhoneManager : MonoBehaviour
 {
+    public static event System.Action OnFlash;
+    public static event System.Action OnPhoto;
+    public static event System.Action OnSiren;
+
     public GameObject phoneUI;
     public Slider batteryBar;
+    public Button flashButton;
+    public Button photoButton;
+    public Button sirenButton;
+
     public float batteryDrainRate = 0.01f;
     public float chargeRate = 0.05f;
+
     public Light flashLight;
     public float flashIntensity = 12f;
     public float flashDuration = 0.08f;
-    public KeyCode flashKey = KeyCode.F;
+    public float flashBatteryCost = 0.02f;
+
+    public float photoBatteryCost = 0.03f;
+
+    public AudioSource sirenSource;
+    public AudioClip sirenClip;
+    public float sirenBatteryCost = 0.05f;
+    public float sirenCooldown = 10f;
+
     public KeyCode toggleKey = KeyCode.Tab;
     public Transform cameraPivot;
     public Transform charger;
     public float lookThreshold = 15f;
 
     private float battery = 1f;
+    private float sirenTimer = 0f;
     private bool phoneActive = false;
     private bool isCharging = false;
     private TemperatureManager temperatureManager;
@@ -24,6 +42,15 @@ public class PhoneManager : MonoBehaviour
     void Start()
     {
         temperatureManager = FindFirstObjectByType<TemperatureManager>();
+
+        if (flashButton != null)
+            flashButton.onClick.AddListener(TriggerFlash);
+
+        if (photoButton != null)
+            photoButton.onClick.AddListener(TriggerPhoto);
+
+        if (sirenButton != null)
+            sirenButton.onClick.AddListener(TriggerSiren);
 
         UpdateBatteryUI();
         phoneUI.SetActive(false);
@@ -45,10 +72,13 @@ public class PhoneManager : MonoBehaviour
             return;
         }
 
+        if (sirenTimer > 0f)
+            sirenTimer -= Time.deltaTime;
+
         HandleToggle();
         CheckIfLookingAtCharger();
         HandleBattery();
-        HandleFlash();
+        UpdateButtons();
     }
 
     void HandleToggle()
@@ -91,17 +121,66 @@ public class PhoneManager : MonoBehaviour
         }
     }
 
-    void HandleFlash()
+    void UpdateButtons()
     {
-        if (phoneActive && Input.GetKeyDown(flashKey) && flashLight != null && battery > 0)
+        bool hasBattery = battery > 0f;
+
+        if (flashButton != null)
+            flashButton.interactable = hasBattery;
+
+        if (photoButton != null)
+            photoButton.interactable = hasBattery;
+
+        if (sirenButton != null)
+            sirenButton.interactable = hasBattery && sirenTimer <= 0f;
+    }
+
+    public void TriggerFlash()
+    {
+        if (!phoneActive || battery <= 0f)
+            return;
+
+        if (flashLight != null)
         {
             flashLight.intensity = flashIntensity;
+            CancelInvoke(nameof(ResetFlash));
             Invoke(nameof(ResetFlash), flashDuration);
-
-            battery -= 0.02f;
-            battery = Mathf.Clamp01(battery);
-            UpdateBatteryUI();
         }
+
+        UseBattery(flashBatteryCost);
+
+        OnFlash?.Invoke();
+    }
+
+    public void TriggerPhoto()
+    {
+        if (!phoneActive || battery <= 0f)
+            return;
+
+        UseBattery(photoBatteryCost);
+
+        OnPhoto?.Invoke();
+    }
+
+    public void TriggerSiren()
+    {
+        if (!phoneActive || battery <= 0f || sirenTimer > 0f)
+            return;
+
+        if (sirenSource != null && sirenClip != null)
+            sirenSource.PlayOneShot(sirenClip);
+
+        sirenTimer = sirenCooldown;
+        UseBattery(sirenBatteryCost);
+
+        OnSiren?.Invoke();
+    }
+
+    void UseBattery(float amount)
+    {
+        battery -= amount;
+        battery = Mathf.Clamp01(battery);
+        UpdateBatteryUI();
     }
 
     void ResetFlash()
